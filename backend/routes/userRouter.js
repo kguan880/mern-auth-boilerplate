@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const User = require('../models/userModel')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 router.post('/register', async (req, res) => {
     try {
@@ -39,6 +40,38 @@ router.post('/register', async (req, res) => {
         res.json(savedUser)
 
     } catch (err) {
+        res.status(500).json({ error: err.message })
+    }
+})
+
+router.post('/login', async (req, res)=>{
+    try{
+        const {email, password} = req.body
+
+        //validate
+        if(!email || !password){
+            return res.status(400).json({ message: "Not all fields have been entered" })
+        }
+
+        const user = await User.findOne({email: email})
+        if(!user){
+            return res.status(400).json({ message: "No account with this email exists" })
+        }
+        const isMatch = await bcrypt.compare(password, user.password)
+        if(!isMatch){
+            return res.status(400).json({ message: "Invalid credentials" })
+        }
+
+        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET)
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email
+            }
+        })
+    }catch (err) {
         res.status(500).json({ error: err.message })
     }
 })
